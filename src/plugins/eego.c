@@ -64,6 +64,12 @@ static label8_t eegolabel209[] = {
     "C4",    "T8",     "M2",    "CP5",    "CP1",   "CP2",    "CP6",    "P7",
     "P3",    "PZ",     "P4",    "P8",     "POZ",   "O1",     "OZ",     "O2" };
 
+static label8_t eegolabel001[] = {
+    "AF3",   "AF4",    "F3",   "F1",     "FZ",    "F2",     "F4",     "FC3",
+    "FC1",   "FCZ",    "FC2",  "FC4",    "C3",    "C1",     "CZ",    "C2",  
+    "C4",    "CP3",    "CP1",   "CPZ",  "CP2",    "CP4",   "P3",     "P1", 
+    "PZ",    "P2",     "P4",    "PO3",  "POZ",    "PO4",   "O1",     "O2"};
+
 // 64 channels CA-200 cap
 static label8_t eegolabel200[] = {
     "FP1",   "FPZ",    "FP2",   "F7",     "F3",    "FZ",     "F4",     "F8",
@@ -418,6 +424,10 @@ static int prepareMask(struct eego_eegdev* eegodev, const char* optv[]) {
     else if (strcmp(optv[3], "209") == 0) {
       eegodev->eegolabel = &eegolabel209;
     }
+    // 32 CA-209 cap
+    else if (strcmp(optv[3], "001") == 0) {
+      eegodev->eegolabel = &eegolabel001;
+    }
   
   } else {
     
@@ -436,6 +446,12 @@ static int prepareMask(struct eego_eegdev* eegodev, const char* optv[]) {
       eegodev->ref_mask = (unsigned long long) 0xFFFFFFFF;
       eegodev->eegolabel = &eegolabel209;
     }
+        // 32 CA-209 cap
+    else if (strcmp(optv[3], "001") == 0) {
+      eegodev->ref_mask = (unsigned long long) 0xFFFFFFFF;
+      eegodev->eegolabel = &eegolabel001;
+    }
+
   }
 
   eegodev->bip_mask = strtoull(optv[2], &end, 16);
