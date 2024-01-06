@@ -89,3 +89,9 @@ pkglib_LTLIBRARIES += eego.la
 endif
 eego_la_SOURCES = eego.c device-helper.h device-helper.c
 eego_la_LIBADD = $(EEGO_LIBS) $(GNULIB)
+
+if XIPP_SUPPORT
+pkglib_LTLIBRARIES += xipp.la
+endif
+xipp_la_SOURCES = xipp.c device-helper.h device-helper.c
+xipp_la_LIBADD = $(XIPP_LIBS) $(GNULIB)

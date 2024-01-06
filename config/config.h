@@ -1040,7 +1040,7 @@
 /* #undef HAVE__SET_INVALID_PARAMETER_HANDLER */
 
 /* Installed library path */
-#define LIBDIR "/usr/lib"
+#define LIBDIR "/usr/local/lib"
 
 /* attribute of the non-exported symbols */
 #define LOCAL_FN __attribute__ ((visibility ("hidden")))
@@ -1138,7 +1138,7 @@
 #define STDC_HEADERS 1
 
 /* System configuration files path */
-#define SYSCONFDIR "/usr/etc"
+#define SYSCONFDIR "/usr/local/etc"
 
 /* Define if the POSIX multithreading library can be used. */
 #define USE_POSIX_THREADS 1

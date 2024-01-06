@@ -10,7 +10,7 @@ glthread/lock.lo: glthread/lock.c /usr/include/stdc-predef.h \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
  stdlib.h /usr/include/stdlib.h \
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
- /usr/lib/gcc/x86_64-linux-gnu/4.8/include/stddef.h \
+ /usr/lib/gcc/x86_64-linux-gnu/9/include/stddef.h \
  /usr/include/x86_64-linux-gnu/bits/waitflags.h \
  /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
  /usr/include/x86_64-linux-gnu/bits/floatn.h \
@@ -88,7 +88,7 @@ stdlib.h:
 
 /usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
 
-/usr/lib/gcc/x86_64-linux-gnu/4.8/include/stddef.h:
+/usr/lib/gcc/x86_64-linux-gnu/9/include/stddef.h:
 
 /usr/include/x86_64-linux-gnu/bits/waitflags.h:
 
