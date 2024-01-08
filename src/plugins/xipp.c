@@ -20,6 +20,8 @@ struct xipp_eegdev {
 
 	int NUM_CH;
 
+	unsigned int offset[EGD_NUM_STYPE];
+
     pthread_t thread_id;
     pthread_mutex_t acqlock;
     unsigned int runacq;
@@ -68,7 +70,7 @@ static void* xipp_read_fn(void* arg)
 	int bytes_to_allocate = sizeof(float) * xippdev->NUM_CH;
 	float* buffer = (float*) malloc(bytes_to_allocate);
 
-	unsigned int prev_ts = 0;
+	unsigned int prev_ts = xl_time();
 
 	while (1) {
 		if (xippdev->runacq == 0) {
@@ -85,12 +87,18 @@ static void* xipp_read_fn(void* arg)
 		}
 		// Divide difference in timestamps by 4 to get number of new points
 		int num_new_points = (ts_out[0] - prev_ts) / 4;
-		for (int i = (num_points - num_new_points) - 1; i < num_points; i++) {
+		if (num_new_points > 32) {
+			num_new_points = 32;
+			printf("Too many new points, buffer is skipping\n");
+		}
+		for (int i = (num_points - num_new_points); i < num_points; i++) {
 			for (int j = 0; j < xippdev->NUM_CH; j++) {
 				buffer[j] = data_out[j * num_points + i];
 			}
 			ci->update_ringbuffer(&(xippdev->dev), buffer, bytes_to_allocate);
 		}
+
+		prev_ts = ts_out[0];
 	}
 
 	free(elecs_in);
@@ -106,6 +114,36 @@ error:
 	free(buffer);
 	ci->report_error(&(xippdev->dev), EIO);
 	return NULL;
+}
+
+/**
+ * @brief      Sets the cap's capabilities.
+ *
+ * @param      xippdev  The device's structure.
+ * @param      optv     The optv.
+ *
+ * @return     Always 0.
+ */
+static int xipp_set_capability(struct xipp_eegdev* xippdev,
+                               const char* optv[]) {
+  struct systemcap cap = {
+      .sampling_freq = 30000,
+      .type_nch[EGD_EEG] = 32,
+      .type_nch[EGD_SENSOR] = 0,
+      .type_nch[EGD_TRIGGER] = 0,
+      .device_type = "Xipp (Ripple)",
+      .device_id = "Macro + Stim"
+  };
+  struct devmodule* dev = &xippdev->dev;
+
+  xippdev->offset[EGD_EEG] = 0;
+  xippdev->offset[EGD_SENSOR] = 32 * sizeof(float);
+  xippdev->offset[EGD_TRIGGER] = xippdev->offset[EGD_SENSOR] + (0) * sizeof(float);
+  
+  dev->ci.set_cap(dev, &cap);
+  //dev->ci.set_input_samlen(dev, (eegodev->NCH ) * sizeof(double) - 1);
+  dev->ci.set_input_samlen(dev, (xippdev->NUM_CH ) * sizeof(float));
+  return 0;
 }
 
 /******************************************************************
@@ -187,9 +225,12 @@ int xipp_open_device(struct devmodule* dev, const char* optv[])
 		}
 	}
 
+	xipp_set_capability(xippdev, optv);
+
 	pthread_mutex_init(&xippdev->acqlock, NULL);
 	xippdev->runacq = 1;
-	if ((pthread_create(&(xippdev->thread_id), NULL, 
+	int ret;
+	if ((ret = pthread_create(&(xippdev->thread_id), NULL, 
 								xipp_read_fn, xippdev)))
 	  goto error;
 
