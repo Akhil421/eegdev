@@ -47,7 +47,7 @@ enum {
 static const struct egdi_optname xipp_options[] = {
     [USE_TCP] = {.name = "TCP", .defvalue = "1"},
 	[NUM_CH] = {.name = "NUM_CH", .defvalue = "32"},
-	[STREAM] = {.name = "STREAM", .defvalue = "raw"},
+	[STREAM] = {.name = "STREAM", .defvalue = "hi-res"},
 	// [SR_PARAM] = {.name = "samplingrate", .defvalue = "1000"},
 	// [PORT] = {.name = "port", .defvalue = "50000"},
 	[NUMOPT] = {.name = NULL}};
@@ -77,7 +77,7 @@ static void* xipp_read_fn(void* arg)
 			break;
 		}
 		// Get 32 points and the new timestamp
-		int n_points = xl_cont_raw(ts_out, data_out, num_points, elecs_in, xippdev->NUM_CH, 0);
+		int n_points = xl_cont_hires(ts_out, data_out, num_points, elecs_in, xippdev->NUM_CH, 0);
 		if (n_points != num_points) {
 			printf("Error getting data\n");
 			goto error;
@@ -96,6 +96,7 @@ static void* xipp_read_fn(void* arg)
 				buffer[j] = data_out[j * num_points + i];
 			}
 			ci->update_ringbuffer(&(xippdev->dev), buffer, bytes_to_allocate);
+			// usleep(50);
 		}
 
 		prev_ts = ts_out[0];
@@ -127,7 +128,7 @@ error:
 static int xipp_set_capability(struct xipp_eegdev* xippdev,
                                const char* optv[]) {
   struct systemcap cap = {
-      .sampling_freq = 30000,
+      .sampling_freq = 2000,
       .type_nch[EGD_EEG] = 32,
       .type_nch[EGD_SENSOR] = 0,
       .type_nch[EGD_TRIGGER] = 0,
@@ -296,7 +297,7 @@ void xipp_fill_chinfo(const struct devmodule* dev, int stype,
 	info->dtype = EGD_FLOAT;
 	info->min.valdouble = -187500.0;
 	info->max.valdouble = 187500.0;
-	info->label = "raw";
+	info->label = "hi-res";
 	info->unit = xippunit;
 	info->transducter = xipptransducter;
 }
