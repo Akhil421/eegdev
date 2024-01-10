@@ -47,7 +47,7 @@ enum {
 static const struct egdi_optname xipp_options[] = {
     [USE_TCP] = {.name = "TCP", .defvalue = "1"},
 	[NUM_CH] = {.name = "NUM_CH", .defvalue = "32"},
-	[STREAM] = {.name = "STREAM", .defvalue = "raw"},
+	[STREAM] = {.name = "STREAM", .defvalue = "hi-res"},
 	// [SR_PARAM] = {.name = "samplingrate", .defvalue = "1000"},
 	// [PORT] = {.name = "port", .defvalue = "50000"},
 	[NUMOPT] = {.name = NULL}};
@@ -77,7 +77,7 @@ static void* xipp_read_fn(void* arg)
 			break;
 		}
 		// Get 32 points and the new timestamp
-		int n_points = xl_cont_raw(ts_out, data_out, num_points, elecs_in, xippdev->NUM_CH, 0);
+		int n_points = xl_cont_hires(ts_out, data_out, num_points, elecs_in, xippdev->NUM_CH, 0);
 		if (n_points != num_points) {
 			printf("Error getting data\n");
 			goto error;
@@ -87,12 +87,20 @@ static void* xipp_read_fn(void* arg)
 			continue;
 		}
 		// Divide difference in timestamps by 4 to get number of new points
-		int num_new_points = (ts_out[0] - prev_ts) / 4;
-		if (num_new_points > 32) {
-			num_new_points = 32;
-			printf("Too many new points, buffer is skipping\n");
+		// int num_new_points = (ts_out[0] - prev_ts) / 4;
+		// if (num_new_points > 32) {
+		// 	num_new_points = 32;
+		// 	printf("Too many new points, buffer is skipping\n");
+		// }
+		// printf("%d difference between timestamps\n", num_new_points);
+		int num_new_points = 32;
+		for (int i = 0; i < num_points; i++) {
+			if (buffer[0] == data_out[i]) {
+				// printf("%d new datapoints\n", num_points - (i + 1));
+				num_new_points = (num_points - (i + 1));
+				break;
+			}
 		}
-		printf("%d\n", num_new_points);
 		for (int i = (num_points - num_new_points); i < num_points; i++) {
 			for (int j = 0; j < xippdev->NUM_CH; j++) {
 				buffer[j] = data_out[j * num_points + i];
@@ -130,7 +138,7 @@ error:
 static int xipp_set_capability(struct xipp_eegdev* xippdev,
                                const char* optv[]) {
   struct systemcap cap = {
-      .sampling_freq = 30000,
+      .sampling_freq = 2000,
       .type_nch[EGD_EEG] = 32,
       .type_nch[EGD_SENSOR] = 0,
       .type_nch[EGD_TRIGGER] = 0,
