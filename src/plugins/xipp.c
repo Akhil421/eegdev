@@ -34,7 +34,7 @@ static const char xipptransducter[] = "Electrode";
 
 static const union gval eego_scales[EGD_NUM_DTYPE] = {
     [EGD_INT32] = {.valint32_t = 1},
-    [EGD_FLOAT] = {.valfloat = 1000000.0f},  // in uV
+    [EGD_FLOAT] = {.valfloat = 1.0f},  // in uV
     [EGD_DOUBLE] = {.valdouble = 1000000}    // in uV
 };
 
@@ -47,7 +47,7 @@ enum {
 static const struct egdi_optname xipp_options[] = {
     [USE_TCP] = {.name = "TCP", .defvalue = "1"},
 	[NUM_CH] = {.name = "NUM_CH", .defvalue = "32"},
-	[STREAM] = {.name = "STREAM", .defvalue = "hi-res"},
+	[STREAM] = {.name = "STREAM", .defvalue = "raw"},
 	// [SR_PARAM] = {.name = "samplingrate", .defvalue = "1000"},
 	// [PORT] = {.name = "port", .defvalue = "50000"},
 	[NUMOPT] = {.name = NULL}};
@@ -77,12 +77,13 @@ static void* xipp_read_fn(void* arg)
 			break;
 		}
 		// Get 32 points and the new timestamp
-		int n_points = xl_cont_hires(ts_out, data_out, num_points, elecs_in, xippdev->NUM_CH, 0);
+		int n_points = xl_cont_raw(ts_out, data_out, num_points, elecs_in, xippdev->NUM_CH, 0);
 		if (n_points != num_points) {
 			printf("Error getting data\n");
 			goto error;
 		}
 		if (prev_ts == ts_out[0]) {
+			usleep(50);
 			continue;
 		}
 		// Divide difference in timestamps by 4 to get number of new points
@@ -91,6 +92,7 @@ static void* xipp_read_fn(void* arg)
 			num_new_points = 32;
 			printf("Too many new points, buffer is skipping\n");
 		}
+		printf("%d\n", num_new_points);
 		for (int i = (num_points - num_new_points); i < num_points; i++) {
 			for (int j = 0; j < xippdev->NUM_CH; j++) {
 				buffer[j] = data_out[j * num_points + i];
@@ -128,7 +130,7 @@ error:
 static int xipp_set_capability(struct xipp_eegdev* xippdev,
                                const char* optv[]) {
   struct systemcap cap = {
-      .sampling_freq = 2000,
+      .sampling_freq = 30000,
       .type_nch[EGD_EEG] = 32,
       .type_nch[EGD_SENSOR] = 0,
       .type_nch[EGD_TRIGGER] = 0,
