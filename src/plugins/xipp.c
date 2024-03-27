@@ -122,24 +122,24 @@ static void* xipp_read_fn(void* arg)
 			// printf("[");
 			for (int j = 0; j < xippdev->NUM_CH; j++) {
 				// printf("%d\n", data_out[j * num_points + i]);
-				// switch(xippdev->CH_MAP[xippdev->CH_LIST[j]]) {
-				// 	case IS_EEG:
-				// 		// printf(" %d is EEG ", xippdev->CH_LIST[j]);
-				// 		buffer[eeg_count] = data_out[j * num_points + i];
-				// 		eeg_count++;
-				// 		break;
-				// 	case IS_SIGNAL:
-				// 	// printf(" %d is Signal ", xippdev->CH_LIST[j]);
-				// 		buffer[xippdev->NUM_EEG_CH + signal_count] = data_out[j * num_points + i];
-				// 		signal_count++;
-				// 		break;
-				// 	default: 
-				// 		break;
-				// }
+				switch(xippdev->CH_MAP[xippdev->CH_LIST[j]]) {
+					case IS_EEG:
+						// printf(" %d is EEG ", xippdev->CH_LIST[j]);
+						buffer[eeg_count] = data_out[j * num_points + i];
+						eeg_count++;
+						break;
+					case IS_SIGNAL:
+					// printf(" %d is Signal ", xippdev->CH_LIST[j]);
+						buffer[xippdev->NUM_EEG_CH + signal_count] = data_out[j * num_points + i];
+						signal_count++;
+						break;
+					default: 
+						break;
+				}
 				if (j == 0) {
 					reference_point = data_out[i];
 				}
-				buffer[j] = data_out[j * num_points + i];
+				// buffer[j] = data_out[j * num_points + i];
 			}
 			// printf("]\n");
 			// buffer[xippdev->NUM_CH] = 0;
@@ -190,7 +190,7 @@ static int xipp_set_capability(struct xipp_eegdev* xippdev,
   
   dev->ci.set_cap(dev, &cap);
   //dev->ci.set_input_samlen(dev, (eegodev->NCH ) * sizeof(double) - 1);
-  dev->ci.set_input_samlen(dev, (xippdev->NUM_CH + 1 ) * sizeof(float));
+  dev->ci.set_input_samlen(dev, (xippdev->NUM_CH ) * sizeof(float));
   return 0;
 }
 
