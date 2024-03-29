@@ -16,7 +16,7 @@
 #include "xipp_wrapper.h"
 
 struct xipp_eegdev {
-    struct devmodule dev;
+	struct devmodule dev;
 
 	unsigned int NUM_EEG_CH;
 	unsigned int* EEG_CH_LIST;
@@ -30,9 +30,9 @@ struct xipp_eegdev {
 
 	unsigned int offset[EGD_NUM_STYPE];
 
-    pthread_t thread_id;
-    pthread_mutex_t acqlock;
-    unsigned int runacq;
+	pthread_t thread_id;
+	pthread_mutex_t acqlock;
+	unsigned int runacq;
 };
 
 #define get_xipp(dev_p) ((struct xipp_eegdev*)(dev_p))
@@ -51,15 +51,27 @@ static const union gval eego_scales[EGD_NUM_DTYPE] = {
 
 enum {
 	USE_TCP,
-	EEG_MASK,
-	SENSOR_MASK,
+	EEG_MASK_P1,
+	EEG_MASK_P2,
+	EEG_MASK_P3,
+	EEG_MASK_P4,
+	SENSOR_MASK_P1,
+	SENSOR_MASK_P2,
+	SENSOR_MASK_P3,
+	SENSOR_MASK_P4,
 	STREAM,
 	NUMOPT
 };
 static const struct egdi_optname xipp_options[] = {
-    [USE_TCP] = {.name = "TCP", .defvalue = "1"},
-	[EEG_MASK] = {.name="EEG_MASK", .defvalue = "0xffffffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
-	[SENSOR_MASK] = {.name="SENSOR_MASK", .defvalue = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+	[USE_TCP] = {.name = "TCP", .defvalue = "1"},
+	[EEG_MASK_P1] = {.name="EEG_MASK_P1", .defvalue = "0xffffffff000000000000000000000000"},
+	[EEG_MASK_P2] = {.name="EEG_MASK_P2", .defvalue = "0x00000000000000000000000000000000"},
+	[EEG_MASK_P3] = {.name="EEG_MASK_P3", .defvalue = "0x00000000000000000000000000000000"},
+	[EEG_MASK_P4] = {.name="EEG_MASK_P4", .defvalue = "0x00000000000000000000000000000000"},
+	[SENSOR_MASK_P1] = {.name="SENSOR_MASK_P1", .defvalue = "0x00000000000000000000000000000000"},
+	[SENSOR_MASK_P2] = {.name="SENSOR_MASK_P2", .defvalue = "0x00000000000000000000000000000000"},
+	[SENSOR_MASK_P3] = {.name="SENSOR_MASK_P3", .defvalue = "0x00000000000000000000000000000000"},
+	[SENSOR_MASK_P4] = {.name="SENSOR_MASK_P4", .defvalue = "0x00000000000000000000000000000000"},
 	[STREAM] = {.name = "STREAM", .defvalue = "hi-res"},
 	[NUMOPT] = {.name = NULL}};
 
@@ -77,7 +89,7 @@ static void* xipp_read_fn(void* arg)
 
 	float* data_out = (float*) malloc(sizeof(float) * num_points * xippdev->NUM_CH);
 	unsigned int* ts_out = (unsigned int*) malloc(sizeof(unsigned int) * 1);
-    ts_out[0] = 1;
+	ts_out[0] = 1;
 
 	int bytes_to_allocate = sizeof(float) * (xippdev->NUM_CH);
 	float* buffer = (float*) malloc(bytes_to_allocate);
@@ -92,8 +104,8 @@ static void* xipp_read_fn(void* arg)
 		}
 		// Get 32 points and the new timestamp
 		unsigned int n_points = xl_cont_hires(ts_out, data_out, num_points, xippdev->CH_LIST, xippdev->NUM_CH, 0);
-		if (n_points < (num_points - 1)) {
-			printf("%d connected channels, %d points, %d new points\n", xippdev->NUM_CH, num_points, n_points);
+		if (n_points == -1) {
+			// printf("%d connected channels, %d points, %d new points\n", xippdev->NUM_CH, num_points, n_points);
 			printf("Error getting data\n");
 			goto error;
 		}
@@ -203,15 +215,18 @@ unsigned int hexchar_to_int(char c) {
 }
 
 // Function to generate and print a list of positions of set bits
-unsigned int generate_set_bit_positions(const char* mask, unsigned int* list_ptr) {
+unsigned int generate_set_bit_positions(const char* masks[], unsigned int* list_ptr) {
     int count = 0;
-    if (mask[0] == '0' && (mask[1] == 'x' || mask[1] == 'X')) mask += 2;
-    for (int i = 0; i < 128; i++) {
-        unsigned int num = hexchar_to_int(mask[i]);
-        for (int j = 0; j < 4; j++) {
-            if (num && (1 << j)) {
-                list_ptr[count] = i * 4 + j;
-				count++;
+    for (int i = 0; i < 4; i++) {
+        char* mask = masks[i];
+        if (mask[0] == '0' && (mask[1] == 'x' || mask[1] == 'X')) mask += 2;
+        for (int j = 0; j < 32; j++) {
+            unsigned int num = hexchar_to_int(mask[j]);
+            for (int k = 0; k < 4; k++) {
+                if (num && (1 << k)) {
+                    list_ptr[count] = i * 128 + j * 4 + k;
+                    count++;
+                }
             }
         }
     }
@@ -253,7 +268,8 @@ int xipp_open_device(struct devmodule* dev, const char* optv[])
 	memset(xippdev->CH_MAP, 0, sizeof(unsigned int) * 512);
 
 	xippdev->EEG_CH_LIST = (unsigned int*) malloc(sizeof(unsigned int) * 512);
-	xippdev->NUM_EEG_CH = generate_set_bit_positions(optv[EEG_MASK], xippdev->EEG_CH_LIST);
+	char* EEG_MASKS[] = {optv[EEG_MASK_P1], optv[EEG_MASK_P2], optv[EEG_MASK_P3], optv[EEG_MASK_P4]};
+	xippdev->NUM_EEG_CH = generate_set_bit_positions(EEG_MASKS, xippdev->EEG_CH_LIST);
 
 	printf("%d EEG Channels Specified\n", xippdev->NUM_EEG_CH);
 
@@ -264,7 +280,8 @@ int xipp_open_device(struct devmodule* dev, const char* optv[])
 	printf("%s\n", optv[SENSOR_MASK]);
 
 	xippdev->SENSOR_CH_LIST = (unsigned int*) malloc(sizeof(unsigned int) * 512);
-	xippdev->NUM_SENSOR_CH = generate_set_bit_positions(optv[SENSOR_MASK], xippdev->SENSOR_CH_LIST);
+	char* SENSOR_MASKS[] = {optv[SENSOR_MASK_P1], optv[SENSOR_MASK_P2], optv[SENSOR_MASK_P3], optv[SENSOR_MASK_P4]};
+	xippdev->NUM_SENSOR_CH = generate_set_bit_positions(SENSOR_MASKS, xippdev->SENSOR_CH_LIST);
 
 	printf("%d Sensor Channels Specified\n", xippdev->NUM_SENSOR_CH);
 
