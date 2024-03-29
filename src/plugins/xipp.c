@@ -138,11 +138,13 @@ static void* xipp_read_fn(void* arg)
 					case IS_EEG:
 						// printf(" %d is EEG ", xippdev->CH_LIST[j]);
 						buffer[eeg_count] = data_out[j * n_points + i];
+						// buffer[((i - (n_points - num_new_points)) * xippdev->NUM_CH) + eeg_count] = data_out[j * n_points + i];
 						eeg_count++;
 						break;
 					case IS_SIGNAL:
 					// printf(" %d is Signal ", xippdev->CH_LIST[j]);
 						buffer[xippdev->NUM_EEG_CH + signal_count] = data_out[j * n_points + i];
+						// buffer[((i - (n_points - num_new_points)) * (xippdev->NUM_EEG_CH + signal_count)) + xippdev->NUM_CH] = data_out[j * n_points + i];
 						signal_count++;
 						break;
 					default: 
@@ -159,6 +161,8 @@ static void* xipp_read_fn(void* arg)
 			ci->update_ringbuffer(&(xippdev->dev), buffer, bytes_to_allocate);
 			// usleep(50);
 		}
+		// ci->update_ringbuffer(&(xippdev->dev), buffer, sizeof(float) * (xippdev->NUM_CH) * num_new_points);
+
 
 		prev_ts = ts_out[0];
 	}
@@ -436,7 +440,7 @@ int xipp_set_channel_groups(struct devmodule* dev, unsigned int ngrp,
 	for (i = 0; i < ngrp; i++) {
 		stype = grp[i].sensortype;
 		// Set parameters of (eeg -> ringbuffer)
-		selch[i].in_offset = grp[i].index * sizeof(float);
+		selch[i].in_offset = xippdev->offset[stype] + grp[i].index * sizeof(float);
 		selch[i].inlen = grp[i].nch * sizeof(float);
 		selch[i].bsc = (stype == EGD_TRIGGER) ? 0 : 1;
 		selch[i].typein = EGD_FLOAT;
