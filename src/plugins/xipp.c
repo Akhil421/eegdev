@@ -277,8 +277,6 @@ int xipp_open_device(struct devmodule* dev, const char* optv[])
 		xippdev->CH_MAP[xippdev->EEG_CH_LIST[i]] = IS_EEG;
 	}
 
-	printf("%s\n", optv[SENSOR_MASK]);
-
 	xippdev->SENSOR_CH_LIST = (unsigned int*) malloc(sizeof(unsigned int) * 512);
 	char* SENSOR_MASKS[] = {optv[SENSOR_MASK_P1], optv[SENSOR_MASK_P2], optv[SENSOR_MASK_P3], optv[SENSOR_MASK_P4]};
 	xippdev->NUM_SENSOR_CH = generate_set_bit_positions(SENSOR_MASKS, xippdev->SENSOR_CH_LIST);
