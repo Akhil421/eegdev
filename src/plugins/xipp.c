@@ -121,14 +121,14 @@ static void* xipp_read_fn(void* arg)
 		// }
 		// printf("%d difference between timestamps\n", num_new_points);
 		int num_new_points = n_points;
-		for (int i = 0; i < num_points; i++) {
+		for (int i = 0; i < n_points; i++) {
 			if (reference_point == data_out[i]) {
 				// printf("%d new datapoints\n", num_points - (i + 1));
-				num_new_points = (num_points - (i + 1));
+				num_new_points = (n_points - (i + 1));
 				break;
 			}
 		}
-		for (int i = (num_points - num_new_points); i < num_points; i++) {
+		for (int i = (n_points - num_new_points); i < n_points; i++) {
 			unsigned int eeg_count = 0;
 			unsigned int signal_count = 0;
 			// printf("[");
@@ -137,12 +137,12 @@ static void* xipp_read_fn(void* arg)
 				switch(xippdev->CH_MAP[xippdev->CH_LIST[j]]) {
 					case IS_EEG:
 						// printf(" %d is EEG ", xippdev->CH_LIST[j]);
-						buffer[eeg_count] = data_out[j * num_points + i];
+						buffer[eeg_count] = data_out[j * n_points + i];
 						eeg_count++;
 						break;
 					case IS_SIGNAL:
 					// printf(" %d is Signal ", xippdev->CH_LIST[j]);
-						buffer[xippdev->NUM_EEG_CH + signal_count] = data_out[j * num_points + i];
+						buffer[xippdev->NUM_EEG_CH + signal_count] = data_out[j * n_points + i];
 						signal_count++;
 						break;
 					default: 
