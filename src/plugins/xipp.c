@@ -45,10 +45,10 @@ struct xipp_eegdev {
 static const char xippunit[] = "uV";
 static const char xipptransducter[] = "Electrode";
 
-static const union gval eego_scales[EGD_NUM_DTYPE] = {
+static const union gval xipp_scales[EGD_NUM_DTYPE] = {
     [EGD_INT32] = {.valint32_t = 1},
     [EGD_FLOAT] = {.valfloat = 1.0f},  // in uV
-    [EGD_DOUBLE] = {.valdouble = 1000000}    // in uV
+    [EGD_DOUBLE] = {.valdouble = 1/10000000}    // in uV
 };
 
 enum {
@@ -93,8 +93,8 @@ static void* xipp_read_fn(void* arg)
 	unsigned int* ts_out = (unsigned int*) malloc(sizeof(unsigned int) * 1);
 	ts_out[0] = 1;
 
-	int bytes_to_allocate = sizeof(float) * (xippdev->NUM_CH);
-	float* buffer = (float*) malloc(bytes_to_allocate);
+	int bytes_to_allocate = sizeof(double) * (xippdev->NUM_CH);
+	double* buffer = (double*) malloc(bytes_to_allocate);
 
 	unsigned int prev_ts = xl_time();
 
@@ -139,13 +139,13 @@ static void* xipp_read_fn(void* arg)
 				switch(xippdev->CH_MAP[xippdev->CH_LIST[j]]) {
 					case IS_EEG:
 						// printf(" %d is EEG ", xippdev->CH_LIST[j]);
-						buffer[eeg_count] = data_out[j * n_points + i];
+						buffer[eeg_count] = (double) data_out[j * n_points + i];
 						// buffer[((i - (n_points - num_new_points)) * xippdev->NUM_CH) + eeg_count] = data_out[j * n_points + i];
 						eeg_count++;
 						break;
 					case IS_SIGNAL:
 					// printf(" %d is Signal ", xippdev->CH_LIST[j]);
-						buffer[xippdev->NUM_EEG_CH + signal_count] = data_out[j * n_points + i];
+						buffer[xippdev->NUM_EEG_CH + signal_count] = (double) data_out[j * n_points + i];
 						// buffer[((i - (n_points - num_new_points)) * (xippdev->NUM_EEG_CH + signal_count)) + xippdev->NUM_CH] = data_out[j * n_points + i];
 						signal_count++;
 						break;
@@ -203,12 +203,12 @@ static int xipp_set_capability(struct xipp_eegdev* xippdev,
   struct devmodule* dev = &xippdev->dev;
 
   xippdev->offset[EGD_EEG] = 0;
-  xippdev->offset[EGD_SENSOR] = xippdev->NUM_EEG_CH * sizeof(float);
-  xippdev->offset[EGD_TRIGGER] = xippdev->offset[EGD_SENSOR] + (xippdev->NUM_SENSOR_CH) * sizeof(float);
+  xippdev->offset[EGD_SENSOR] = xippdev->NUM_EEG_CH * sizeof(double);
+  xippdev->offset[EGD_TRIGGER] = xippdev->offset[EGD_SENSOR] + (xippdev->NUM_SENSOR_CH) * sizeof(double);
   
   dev->ci.set_cap(dev, &cap);
   //dev->ci.set_input_samlen(dev, (eegodev->NCH ) * sizeof(double) - 1);
-  dev->ci.set_input_samlen(dev, (xippdev->NUM_CH ) * sizeof(float));
+  dev->ci.set_input_samlen(dev, (xippdev->NUM_CH ) * sizeof(double));
   return 0;
 }
 
@@ -502,11 +502,11 @@ int xipp_set_channel_groups(struct devmodule* dev, unsigned int ngrp,
 	for (i = 0; i < ngrp; i++) {
 		stype = grp[i].sensortype;
 		// Set parameters of (eeg -> ringbuffer)
-		selch[i].in_offset = xippdev->offset[stype] + grp[i].index * sizeof(float);
-		selch[i].inlen = grp[i].nch * sizeof(float);
+		selch[i].in_offset = xippdev->offset[stype] + grp[i].index * sizeof(double);
+		selch[i].inlen = grp[i].nch * sizeof(double);
 		selch[i].bsc = (stype == EGD_TRIGGER) ? 0 : 1;
-		selch[i].typein = EGD_FLOAT;
-		selch[i].sc = eego_scales[grp[i].datatype];
+		selch[i].typein = EGD_DOUBLE;
+		selch[i].sc = xipp_scales[grp[i].datatype];
 		selch[i].typeout = grp[i].datatype;
 		selch[i].iarray = grp[i].iarray;
 		selch[i].arr_offset = grp[i].arr_offset;
@@ -524,9 +524,11 @@ void xipp_fill_chinfo(const struct devmodule* dev, int stype,
 
 	if (stype != EGD_TRIGGER) {
 		info->isint = 0;
-		info->dtype = EGD_FLOAT;
-		info->min.valdouble = -187500.0;
-		info->max.valdouble = 187500.0;
+		info->dtype = EGD_DOUBLE;
+		// info->min.valdouble = -187500.0;
+		// info->max.valdouble = 187500.0;
+		info->min.valdouble = -DBL_MAX;
+		info->max.valdouble = DBL_MAX;
 		info->label = (stype == EGD_EEG) ? xippdev->eeglabel[ich] : xippdev->sensorlabel[ich];
 		info->unit = xippunit;
 		info->transducter = xipptransducter;
