@@ -29,6 +29,8 @@ struct xipp_eegdev {
 	unsigned int* CH_MAP;
 
 	unsigned int offset[EGD_NUM_STYPE];
+	char** eeglabel;
+	char** sensorlabel;
 
 	pthread_t thread_id;
 	pthread_mutex_t acqlock;
@@ -281,6 +283,29 @@ int xipp_open_device(struct devmodule* dev, const char* optv[])
 		xippdev->CH_MAP[xippdev->EEG_CH_LIST[i]] = IS_EEG;
 	}
 
+	if (xippdev->NUM_EEG_CH > 0) {
+		xippdev->eeglabel = (char**) malloc(xippdev->NUM_EEG_CH * sizeof(char*));
+		if (xippdev->eeglabel == NULL) {
+			fprintf(stderr, "Failed to allocate memory for EEG labels\n");
+			return -1;
+		}
+		
+		for (unsigned int i = 0; i < xippdev->NUM_EEG_CH; i++) {
+			xippdev->eeglabel[i] = (char*) malloc(8 * sizeof(char));
+			if (xippdev->eeglabel[i] == NULL) {
+			    fprintf(stderr, "Failed to allocate memory for EEG label %u\n", i);
+			    while (i > 0) {
+				free(xippdev->eeglabel[--i]);
+			    }
+			    free(xippdev->eeglabel);
+			    xippdev->eeglabel = NULL;
+			    return -1;
+			}
+		
+			sprintf(xippdev->eeglabel[i], "eeg%u", xippdev->EEG_CH_LIST[i]);
+		}
+	}
+
 	xippdev->SENSOR_CH_LIST = (unsigned int*) malloc(sizeof(unsigned int) * 512);
 	char* SENSOR_MASKS[] = {optv[SENSOR_MASK_P1], optv[SENSOR_MASK_P2], optv[SENSOR_MASK_P3], optv[SENSOR_MASK_P4]};
 	xippdev->NUM_SENSOR_CH = generate_set_bit_positions(SENSOR_MASKS, xippdev->SENSOR_CH_LIST);
@@ -289,6 +314,29 @@ int xipp_open_device(struct devmodule* dev, const char* optv[])
 
 	for (int i = 0; i < xippdev->NUM_SENSOR_CH; i++) {
 		xippdev->CH_MAP[xippdev->SENSOR_CH_LIST[i]] = IS_SIGNAL;
+	}
+
+	if (xippdev->NUM_SENSOR_CH > 0) {
+		xippdev->sensorlabel = (char**) malloc(xippdev->NUM_SENSOR_CH * sizeof(char*));
+		if (xippdev->sensorlabel == NULL) {
+			fprintf(stderr, "Failed to allocate memory for Sensor labels\n");
+			return -1;
+		}
+		
+		for (unsigned int i = 0; i < xippdev->NUM_SENSOR_CH; i++) {
+			xippdev->sensorlabel[i] = (char*) malloc(8 * sizeof(char));
+			if (xippdev->sensorlabel[i] == NULL) {
+			    fprintf(stderr, "Failed to allocate memory for Sensor label %u\n", i);
+			    while (i > 0) {
+				free(xippdev->sensorlabel[--i]);
+			    }
+			    free(xippdev->sensorlabel);
+			    xippdev->sensorlabel = NULL;
+			    return -1;
+			}
+		
+			sprintf(xippdev->sensorlabel[i], "sensor%u", xippdev->SENSOR_CH_LIST[i]);
+		}
 	}
 
 	// Check for duplicates
@@ -415,10 +463,24 @@ int xipp_close_device(struct devmodule* dev)
 	struct xipp_eegdev* xippdev = get_xipp(dev);
 
 	pthread_mutex_lock(&xippdev->acqlock);
-    xippdev->runacq = 0;
-    pthread_mutex_unlock(&xippdev->acqlock);
+	xippdev->runacq = 0;
+	pthread_mutex_unlock(&xippdev->acqlock);
 
-	free_label(xippdev);
+	for (int i = 0; i < xippdev->NUM_EEG_CH; ++i)
+		free(xippdev->eeglabel[i]);
+	  
+	free(xippdev->eeglabel);
+	  
+	for (int i = 0; i < xippdev->NUM_SENSOR_CH; ++i)
+		free(xippdev->sensorlabel[i]);
+	  
+	free(xippdev->sensorlabel);
+
+	free(xippdev->CH_MAP);
+	free(xippdev->EEG_CH_LIST);
+	free(xippdev->SENSOR_CH_LIST);
+	free(xippdev->CH_LIST);
+	
 	pthread_join(xippdev->thread_id, NULL);
 	pthread_mutex_destroy(&xippdev->acqlock);
 	xl_close();
@@ -465,7 +527,7 @@ void xipp_fill_chinfo(const struct devmodule* dev, int stype,
 		info->dtype = EGD_FLOAT;
 		info->min.valdouble = -187500.0;
 		info->max.valdouble = 187500.0;
-		info->label = (stype == EGD_EEG) ? "EEG" : "Sensor";
+		info->label = (stype == EGD_EEG) ? xippdev->eeglabel[ich] : xippdev->sensorlabel[ich];
 		info->unit = xippunit;
 		info->transducter = xipptransducter;
 	} else {
