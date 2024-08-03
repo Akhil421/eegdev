@@ -93,7 +93,10 @@ static void* xipp_read_fn(void* arg)
 	unsigned int* ts_out = (unsigned int*) malloc(sizeof(unsigned int) * 1);
 	ts_out[0] = 1;
 
-	int bytes_to_allocate = sizeof(double) * (xippdev->NUM_CH);
+	XippDigitalEventPacket_t* event_packets = (XippDigitalEventPacket_t*) malloc(sizeof(XippDigitalEventPacket_t) * num_points);
+	int* event_ids = (int*) calloc(sizeof(int), num_points);
+
+	int bytes_to_allocate = sizeof(double) * (xippdev->NUM_CH + 1);
 	double* buffer = (double*) malloc(bytes_to_allocate);
 
 	unsigned int prev_ts = xl_time();
@@ -106,6 +109,7 @@ static void* xipp_read_fn(void* arg)
 		}
 		// Get 32 points and the new timestamp
 		unsigned int n_points = xl_cont_hires(ts_out, data_out, num_points, xippdev->CH_LIST, xippdev->NUM_CH, 0);
+
 		if (n_points == -1) {
 			// printf("%d connected channels, %d points, %d new points\n", xippdev->NUM_CH, num_points, n_points);
 			printf("Error getting data\n");
@@ -115,6 +119,9 @@ static void* xipp_read_fn(void* arg)
 			usleep(50);
 			continue;
 		}
+
+		unsigned int n_events = xl_digin(event_packets, event_ids, num_points);
+		
 		// Divide difference in timestamps by 4 to get number of new points
 		// int num_new_points = (ts_out[0] - prev_ts) / 4;
 		// if (num_new_points > 32) {
@@ -157,6 +164,15 @@ static void* xipp_read_fn(void* arg)
 				}
 				// buffer[j] = data_out[j * num_points + i];
 			}
+			buffer[xippdev->NUM_CH] = 0;
+			if (i == (n_points - 1)) {
+				for (int i = 0; i < n_events; i++) {
+					if (event_packets[i].timeDooDas != 0) {
+						buffer[xippdev->NUM_CH] = event_packets[i].timeDooDas;
+						break;
+					}
+				}
+			}
 			// printf("]\n");
 			// buffer[xippdev->NUM_CH] = 0;
 			// printf("\n");
@@ -173,11 +189,17 @@ static void* xipp_read_fn(void* arg)
 	free(ts_out);
 	free(buffer);
 
+	free(event_packets);
+	free(event_ids);
+
 	return NULL;
 error:
 	free(data_out);
 	free(ts_out);
 	free(buffer);
+
+	free(event_packets);
+	free(event_ids);
 	ci->report_error(&(xippdev->dev), EIO);
 	return NULL;
 }
@@ -196,7 +218,7 @@ static int xipp_set_capability(struct xipp_eegdev* xippdev,
       .sampling_freq = 2000,
       .type_nch[EGD_EEG] = xippdev->NUM_EEG_CH,
       .type_nch[EGD_SENSOR] = xippdev->NUM_SENSOR_CH,
-      .type_nch[EGD_TRIGGER] = 0,
+      .type_nch[EGD_TRIGGER] = 1,
       .device_type = "Xipp (Ripple)",
       .device_id = "Macro + Stim"
   };
@@ -208,7 +230,7 @@ static int xipp_set_capability(struct xipp_eegdev* xippdev,
   
   dev->ci.set_cap(dev, &cap);
   //dev->ci.set_input_samlen(dev, (eegodev->NCH ) * sizeof(double) - 1);
-  dev->ci.set_input_samlen(dev, (xippdev->NUM_CH ) * sizeof(double));
+  dev->ci.set_input_samlen(dev, (xippdev->NUM_CH + 1 ) * sizeof(double));
   return 0;
 }
 

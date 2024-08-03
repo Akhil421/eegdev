@@ -15,7 +15,7 @@ extern "C" {
         int processorID;
         int moduleID;
         int outputStreamID;
-        int timeDooDas;
+        unsigned int timeDooDas;
         int streamType;
         int flags;
         int class_id;
@@ -28,7 +28,7 @@ extern "C" {
         int processorID;
         int moduleID;
         int outputStreamID;
-        int timeDooDas;
+        unsigned int timeDooDas;
         int streamType;
         int flags;
         int reason;
@@ -113,7 +113,7 @@ extern "C" {
     int xl_spk_data(XippSegmentDataPacketFixed_t arg1, int* arg2, unsigned int arg3, unsigned int arg4);
     int xl_spk_thresh(float* arg1, float* arg2, unsigned int arg3);
     int xl_spk_thresh_set(unsigned int arg1, float arg2, float arg3);
-    int xl_digin(XippDigitalEventPacket_t arg1, int* arg2, unsigned int arg3);
+    int xl_digin(XippDigitalEventPacket_t* arg1, int* arg2, unsigned int arg3);
     int xl_digout(const unsigned int* arg1, const unsigned int* arg2, int len);
     int xl_list_elec(unsigned int* arg1, unsigned int arg2, const char* arg3);
     unsigned int xl_time();
