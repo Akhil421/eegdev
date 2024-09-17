@@ -295,6 +295,25 @@ AM_CONDITIONAL([EEGO_SUPPORT], [test "x$eego_support" = xyes])
 AC_SUBST([EEGO_LIBS], "$LIBS")
 LIBS=$save_LIBS
 
+# Ripple xipp support
+save_LIBS=$LIBS
+AC_ARG_WITH([xipp], AC_HELP_STRING([--with-xipp],
+                    [Support for Ripple xipp backend @<:@default=no@:>@]),
+        [], [with_xipp=no])
+AS_IF([test "x$with_xipp" != xno],
+      AC_SEARCH_LIBS([_Py_read], [python3.6m], [xipp_support=yes],
+        [xipp_support=no; if test "x$with_xipp" != xcheck; then
+             AC_MSG_FAILURE([python library required for Ripple xipp support])
+         fi]), [xipp_support=no])
+AS_IF([test "x$with_xipp" != xno],
+      AC_SEARCH_LIBS([xl_open_tcp], [xipp], [xipp_support=yes],
+        [xipp_support=no; if test "x$with_xipp" != xcheck; then
+             AC_MSG_FAILURE([xipp library required for Ripple xipp support])
+         fi]), [xipp_support=no])
+AM_CONDITIONAL([XIPP_SUPPORT], [test "x$xipp_support" = xyes])
+AC_SUBST([XIPP_LIBS], "$LIBS")
+LIBS=$save_LIBS
+
 
 AX_DEFINE_DIR([LIBDIR], [libdir], [Installed library path])
 AX_DEFINE_DIR([SYSCONFDIR], [sysconfdir], [System configuration files path])
@@ -338,4 +357,5 @@ Configuration summary
     Wearable Sensing DSI support  : $wsdsi_support
     Cognionics Quick-20 support  : $q20_support
     Antneuro eego support  : $eego_support
+    Ripple xipp support  : $xipp_support
 "
